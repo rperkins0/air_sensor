@@ -98,9 +98,9 @@ def parse_file_loadtxt(file, skip=8):
     return dates, data
 
 
-def parse_file_genfromtxt(file):
+def parse_file_panda(file):
     """
-    Use numpy genfromtext function to parse the data files.
+    Use panda dataframe to parse the data files.
     """
     #dictionary mapping columns to datatype instance
     converter_dict = {i:dt.str2float for (i,dt) in enumerate(datatype_list,1)}
