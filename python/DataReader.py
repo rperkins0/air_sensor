@@ -1,3 +1,8 @@
+"""
+For use with htv*.txt files only.
+e.g. data runs with SI7021 (temperature & humidity) and SGP30 (TVOC and C02)
+Reads total into lists and does a single plot.
+"""
 import csv
 import datetime
 import numpy as np

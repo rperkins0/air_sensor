@@ -1,4 +1,8 @@
 """
+For use with 'HCHO*.txt" files
+e.g. data sets using the SI7021 (temperature & humidity) and SGP30 (TVOC and C02) 
+and DFRobot Formaldehyde (HCHO) sensor.
+
 Read a tab-separated text file written by the Arduino logger with the
 ino file _____ loaded on Arduino.  Per that ino's documentation, the
 Arduino was collecting data from the humidity, temperature, TVOC, CO2,
@@ -98,9 +102,9 @@ def parse_file_loadtxt(file, skip=8):
     return dates, data
 
 
-def parse_file_genfromtxt(file):
+def parse_file_panda(file):
     """
-    Use numpy genfromtext function to parse the data files.
+    Use panda dataframe to parse the data files.
     """
     #dictionary mapping columns to datatype instance
     converter_dict = {i:dt.str2float for (i,dt) in enumerate(datatype_list,1)}

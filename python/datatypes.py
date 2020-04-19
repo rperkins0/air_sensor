@@ -22,7 +22,19 @@ class Datatype(object):
         Must be implmented in each child.
         """
         raise NotImplementedError
-    
+
+    def convert(self, string):
+        try:
+            return self.str2float(string)
+        except:
+            raise ValueError("Conversion error: datatype %s cannot convert '%s'" % (self.name,string)) 
+
+    def __repr__(self):
+        return self.name
+
+    def __str__(self):
+        return self.name
+        
 class Temperature(Datatype):
     def __init__(self):
         super().__init__(name = 'Temperature',
@@ -90,5 +102,14 @@ class HCHO(Datatype):
         return float(number_string)
 
 
+class MQ(Datatype):
+    def __init__(self, name):
+        super().__init__(name = 'MQ-'+name,
+                         breakoutboard='?',
+                         vendor='DFRobot',
+                         unit = 'ARB'
+                         )
 
-            
+    def str2float(self, string):
+        number_string = string.strip()
+        return float(number_string)
