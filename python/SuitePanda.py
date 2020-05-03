@@ -1,3 +1,11 @@
+"""
+1) Functions to read a data file into a panda.DataFrame
+2) Use panda api to create a custom set of methods.  Plotting routines are defined here.
+
+NOTE: I have read that inheriting from pandas is a difficult task and that, for my purposes, using the "extension" API is easier.
+
+"""
+
 import csv
 import datetime
 import numpy as np
@@ -6,6 +14,7 @@ import matplotlib.pyplot as plt
 from matplotlib.dates import DateFormatter
 import pandas as pd
 
+#data names, in the order they are stored
 DataNames = [ 'Humidity',
               'Temperature',
               'TVOC',
@@ -21,17 +30,26 @@ DataNames = [ 'Humidity',
               'Ammonia, Sulfide, Benzene']
 
 def fileload(file, verbose=False):
+    """
+    Read a data file that has been written straight from an Arduino (no extra formatting).
+    Create & return a data frame by appending line by line.
+    
+    A typical data line is:
+    2019-05-28 11:17:51, Humidity: 46.32, Temp: 77.05, TVOC: 0.00 ppb, eCOtwo: 400.00 ppm, HCHO: 0.542 ppm, 1.52, 0.46, 0.09, 0.30, 0.54, 0.16, 0.21, 4.91
+    """
     DataRows=[]
     times=[]
     withPath='/home/rory/Arduino/python/' + file
 
     with open(withPath, newline='') as csvfile:
         datareader = csv.reader(csvfile, delimiter=',')
+        count= 0
         for row in datareader:
+            
             if len(row) == 14:
                 Temp={}
-                #Attempt to parse line.  In case of error (Arduino
-                #blip), then skip line
+                #Attempt to parse line.
+                #In case of error (Arduino blip), skip line
                 try:
                     #These columns have text description in addition to data
                     for i in range(1,6):
@@ -45,21 +63,26 @@ def fileload(file, verbose=False):
                         Temp[DataNames[i-1]]= float(row[i].strip())
 
                     DataRows.append(Temp)
+
                     ThisDateTime = datetime.datetime.strptime(row[0],
-                                                          '%Y-%m-%d %H:%M:%S')
+                                                              '%Y-%m-%d %H:%M:%S')
                     #only appends time if previous lines successful
                     times.append(ThisDateTime)
-                except ValueError:
+                except ValueError as err:
                     if verbose == True:
                         print('ERROR: Data not formatted properly,'+
                               'skipping line')
                         print(','.join(row))
+                        print(row)
+                        print(Temp)
                     else:
                         pass
                 except IndexError:
                     if verbose == True:
                         print('ERROR: indexing problem, skipping line')
                         print(','.join(row))
+                        print(row)
+                        print(Temp)
                     else:
                         pass
 
@@ -72,15 +95,26 @@ def fileload(file, verbose=False):
     return df
 
 
+
 @pd.api.extensions.register_dataframe_accessor('suite')
 class suite(object):
+    """
+    This was an attempt to "extend" the DataFrame class.
+    Ideally, I wanted to inherit from DataFrame and keep my custom "Suite"-specific methods bound with the DataFrame.
+    Unfortunately, inheriting from pandas is not straightforward.  I have since learned the proper way.
+    However, the pandas website recommends this "extension" methodology, which creates a new namespace within DataFrames
+    where the user can write their own methods and bound data.  BUT, YOU CANNOT MODIFY the DataFrame, or 
+    it requires methods beyond my knowledge. 
 
-    def __init__(self, pandas_obj):
-        # if type(pandas_obj) == pd.core.frame.DataFrame:
-        #     self._obj = pandas_obj
-        # elif type(pandas_obj) == str:
-        #     self._obj = self._fileload(pandas_obj)
+    I eventually moved the 'fileload' method out of this extension and into a function (see above).  The only
+    method left in the extension is the SuitePlot method.  
+
+    NOTES:
+    Within the 'suite' extension, the DataFrame is access via "self._obj"
+    """
+    def __init__(self, pandas_obj, datatypes=None):
         self._obj = pandas_obj
+        self.datatypes=datatypes
 
     def testmutability(self, col, val):
         #result: can indeed change values
@@ -92,84 +126,48 @@ class suite(object):
                                    "dumbest":[2],
                                    "panda":[3] })
 
-    def fileload(self, file):
-        DataRows=[]
-        times=[]
-        withPath='/home/rory/Arduino/python/' + file
+    def test_attribute(self):
+        print(self.datatypes)
+        
+    def SuitePlot(self, format='%m-%d %H:%M'):
+        columns = self._obj.columns
+        N = len(self._obj.columns)
+        if N > 12:
+            types_to_plot = [n for n in columns if n != 'Hydrogen']
+            return self.generic_grid_plot(3, 4, types_to_plot, format=format)
+        elif N > 4:
+            return self.generic_grid_plot(2, 3, columns, format=format)
+        else:
+            return self.generic_grid_plot(2, 2, columns, format=format)
 
-        with open(withPath, newline='') as csvfile:
-            datareader = csv.reader(csvfile, delimiter=',')
-            for row in datareader:
-                if len(row) == 14:
-                    Temp={}
-                    try:
-                        #These columns have text description in addition to data
-                        for i in range(1,6):
-                            #split by spaces and take second value
-                            DataVal = row[i].split(' ')[2]
-                            #convert to float and store in dictionary
-                            Temp[DataNames[i-1]] = float(DataVal.strip())
 
-                        #These columns should be just data
-                        for i in range(6,14):
-                            Temp[DataNames[i-1]]= float(row[i].strip())
-                            #print(DataNames[i-1])
-                            #print(float(row[i].strip()))
-
-                        DataRows.append(Temp)
-                        ThisDateTime = datetime.datetime.strptime(row[0],
-                                                              '%Y-%m-%d %H:%M:%S')
-                        times.append(ThisDateTime)
-                    except ValueError:
-                        print('ERROR: Data not formatted properly, skipping line')
-                        print(','.join(row))
-                    except IndexError:
-                        print('ERROR: indexing problem, skipping line')
-                        print(','.join(row))
-
-        try:
-            df = pd.DataFrame(DataRows, columns=DataNames)
-            df.set_index(pd.Index(times), inplace=True)
-        except IndexError:
-            print('Index error in making panda!')
-            df = {}
-        return df
-
-    def addfile(self,file):
-        Temp = fileload(file)
-        print("temp loaded with length", len(Temp))
-        Temp2 = self._obj.append(Temp)
-        print("temp2 loaded with length", len(Temp2))
-        self._obj.update(Temp2)
-
-    def SuitePlot(self, format='%M-%D %H:%M'):
-        fig,axarr = plt.subplots(3, 4, sharex=True)
+    def generic_grid_plot(self, rows,cols,types_to_plot, format='%m-%d %H:%M'):
+        """
+        Define a rows x cols subplot grid, then perform a plot for
+        each datatype in types_to_plot
+        """
+        fig,axarr = plt.subplots(rows, cols, sharex=True)
         myFormat=DateFormatter(format)
-
-        PlotNames = DataNames.copy()
-        PlotNames.remove('Hydrogen')
 
         avg = self._obj.mean()
         std = self._obj.std()
-        
-        for i,ax in enumerate(axarr.flat):
+
+        for n,ax in zip(types_to_plot, axarr.flat):
             ax.xaxis.set_major_formatter(myFormat)
             ax.xaxis.set_tick_params(rotation=45)
-            #ax.plot(times, DataList[i])
-            #ax.set_title(DataLabels[i])
-            self._obj.plot(y=PlotNames[i], ax=ax, style=',')
+            self._obj.plot(y=n, ax=ax, style=',')
             TimeRange = [self._obj.index[0],self._obj.index[-1]]
             ax.plot( TimeRange, 
-                     np.ones(2)*avg[PlotNames[i]],
+                     np.ones(2)*avg[n],
                      color='r',
                      linewidth=0.5)
             ax.plot( TimeRange, 
-                     np.ones(2)*(avg[PlotNames[i]]+std[PlotNames[i]]),
+                     np.ones(2)*(avg[n]+std[n]),
                      linestyle='dashed',
                      color='r',
                      linewidth=0.5)
             ax.plot( TimeRange, 
-                     np.ones(2)*(avg[PlotNames[i]]-std[PlotNames[i]]),
+                     np.ones(2)*(avg[n]-std[n]),
                      linestyle='dashed',
                      color='r',
                      linewidth=0.5)
@@ -179,3 +177,5 @@ class suite(object):
                             top=0.95,
                             bottom=0.15)
         fig.show()
+        return fig,axarr
+

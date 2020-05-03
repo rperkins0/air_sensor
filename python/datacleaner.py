@@ -1,5 +1,5 @@
 """
-Data files from Arduino are text files that are not optimally formatted.
+The data files prduced from Arduino are text files that are not optimally formatted.
 
 This module provides functions to cleanup the data and write into new files
 for faster and cleaner loading into analysis/plotting routines.
@@ -21,8 +21,7 @@ import logging
 
 import datatypes
 
-#logFormatter = '%(asctime)s - %(levelname)s - %(message)s - %(file)s - %(line)s'
-#logging.basicConfig(format=logFormatter, level=logging.WARNING)
+
 logging.basicConfig(filename= '/home/rory/Arduino/python/log_dataclean.txt', 
                     level=logging.WARNING,
                     filemode='w'
@@ -30,7 +29,6 @@ logging.basicConfig(filename= '/home/rory/Arduino/python/log_dataclean.txt',
 #logger = logging.getLogger(__name__)
 
 #path to original data files
-
 data_folder = '/home/rory/Arduino/python/archive/'
 #write formatted files to: 
 target_folder = '/home/rory/Arduino/python/formatted/'
@@ -46,10 +44,12 @@ hcho_list = htv_list.copy()
 hcho_list.append(datatypes.HCHO())
 
 suite_list = hcho_list.copy()
-mq_list = ['Smoke', 'Alcohol', 'Methane/Propane/Butane', 'LPG', 
-           'CO', 'Hydrogen', 'CO & Methane', 'Ammonia, Sulfide, Benzene']
-for mq in mq_list:
-    suite_list.append( datatypes.MQ(mq) )
+mq_list =  ['Smoke', 'Alcohol', 'Methane/Propane/Butane', 'LPG', 
+            'CO', 'Hydrogen', 'CO & Methane', 'Ammonia, Sulfide, Benzene']
+mq_short = ['Smoke', 'Alc', 'Me/Pr/Bu', 'LPG',
+            'CO', 'H', 'CO&Me', 'Amm/Sul, Benz']
+for mq,short in zip(mq_list,mq_short):
+    suite_list.append( datatypes.MQ(mq, shortname=short) )
 
 
 #map file names to datatypes
@@ -156,7 +156,6 @@ def reformat(file):
         type_list = collection_types[dtype]
     except:
         raise KeyError("Filename %s does not encode a valid data set")
-    
     last_timestamp = datetime.time(hour=0, minute=0, second=0)
     
     with open(data_folder+file, 'r') as readfile:

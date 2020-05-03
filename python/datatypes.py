@@ -5,12 +5,14 @@ class Datatype(object):
     """
     def __init__(self,
                  name = 'Data',
+                 shortname=None,
                  sensor='Unknown',
                  breakoutboard='Unknown',
                  vendor='Unknown',
                  unit='?'
                  ):                 
         self.name = name
+        self.shortname = shortname or name #default to name
         self.sensor = sensor
         self.breakoutboard = breakoutboard
         self.vendor = vendor
@@ -38,6 +40,7 @@ class Datatype(object):
 class Temperature(Datatype):
     def __init__(self):
         super().__init__(name = 'Temperature',
+                         shortname = 'Temp'
                          sensor = 'SI7021',
                          breakoutboard='SI7021',
                          vendor='Adafruit',
@@ -52,6 +55,7 @@ class Temperature(Datatype):
 class Humidity(Datatype):
     def __init__(self):
         super().__init__(name='Humidity',
+                         shortname='Hum',
                          sensor = 'SI7021',
                          breakoutboard='SI7021',
                          vendor='Adafruit',
@@ -103,11 +107,12 @@ class HCHO(Datatype):
 
 
 class MQ(Datatype):
-    def __init__(self, name):
-        super().__init__(name = 'MQ-'+name,
+    def __init__(self, name, **kwargs):
+        super().__init__(name = name,
                          breakoutboard='?',
                          vendor='DFRobot',
-                         unit = 'ARB'
+                         unit = 'ARB',
+                         **kwargs
                          )
 
     def str2float(self, string):
