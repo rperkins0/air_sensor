@@ -1,9 +1,6 @@
 """
-1) Functions to read a data file into a panda.DataFrame
-2) Use panda api to create a custom set of methods.  Plotting routines are defined here.
-
-NOTE: I have read that inheriting from pandas is a difficult task and that, for my purposes, using the "extension" API is easier.
-
+An API extension of pandas.DataFrame to bind plotting and data cleanup
+methods with a new namespace of the DataFrame object.
 """
 
 import csv
@@ -14,104 +11,35 @@ import matplotlib.pyplot as plt
 from matplotlib.dates import DateFormatter
 import pandas as pd
 
-#data names, in the order they are stored
-DataNames = [ 'Humidity',
-              'Temperature',
-              'TVOC',
-              'CO2',
-              'HCHO',
-              'Smoke',
-              'Alcohol',
-              'Methane/Propane/Butane',
-              'LPG',
-              'CO',
-              'Hydrogen',
-              'CO & Methane',
-              'Ammonia, Sulfide, Benzene']
-
-def fileload(file, verbose=False):
-    """
-    Read a data file that has been written straight from an Arduino (no extra formatting).
-    Create & return a data frame by appending line by line.
-    
-    A typical data line is:
-    2019-05-28 11:17:51, Humidity: 46.32, Temp: 77.05, TVOC: 0.00 ppb, eCOtwo: 400.00 ppm, HCHO: 0.542 ppm, 1.52, 0.46, 0.09, 0.30, 0.54, 0.16, 0.21, 4.91
-    """
-    DataRows=[]
-    times=[]
-    withPath='/home/rory/Arduino/python/' + file
-
-    with open(withPath, newline='') as csvfile:
-        datareader = csv.reader(csvfile, delimiter=',')
-        count= 0
-        for row in datareader:
-            
-            if len(row) == 14:
-                Temp={}
-                #Attempt to parse line.
-                #In case of error (Arduino blip), skip line
-                try:
-                    #These columns have text description in addition to data
-                    for i in range(1,6):
-                        #split by spaces and take third value
-                        DataVal = row[i].split(' ')[2]
-                        #convert to float and store in dictionary
-                        Temp[DataNames[i-1]] = float(DataVal.strip())
-
-                    #These columns should be just data
-                    for i in range(6,14):
-                        Temp[DataNames[i-1]]= float(row[i].strip())
-
-                    DataRows.append(Temp)
-
-                    ThisDateTime = datetime.datetime.strptime(row[0],
-                                                              '%Y-%m-%d %H:%M:%S')
-                    #only appends time if previous lines successful
-                    times.append(ThisDateTime)
-                except ValueError as err:
-                    if verbose == True:
-                        print('ERROR: Data not formatted properly,'+
-                              'skipping line')
-                        print(','.join(row))
-                        print(row)
-                        print(Temp)
-                    else:
-                        pass
-                except IndexError:
-                    if verbose == True:
-                        print('ERROR: indexing problem, skipping line')
-                        print(','.join(row))
-                        print(row)
-                        print(Temp)
-                    else:
-                        pass
-
-    try:
-        df = pd.DataFrame(DataRows, columns=DataNames)
-        df.set_index(pd.Index(times), inplace=True)
-    except IndexError:
-        print('Index error in making panda!')
-        df = {}
-    return df
-
-
+import datacleaner
 
 @pd.api.extensions.register_dataframe_accessor('suite')
 class suite(object):
     """
-    This was an attempt to "extend" the DataFrame class.
-    Ideally, I wanted to inherit from DataFrame and keep my custom "Suite"-specific methods bound with the DataFrame.
-    Unfortunately, inheriting from pandas is not straightforward.  I have since learned the proper way.
-    However, the pandas website recommends this "extension" methodology, which creates a new namespace within DataFrames
-    where the user can write their own methods and bound data.  BUT, YOU CANNOT MODIFY the DataFrame, or 
-    it requires methods beyond my knowledge. 
+    Inheriting from pandas.DataFrame is not straightforward.  I have since learned the proper way.
+    However, the pandas website recommends this "extension" methodology, which creates a new 
+    namespace within DataFrames where the user can write their own methods and bound data.  
 
-    I eventually moved the 'fileload' method out of this extension and into a function (see above).  The only
-    method left in the extension is the SuitePlot method.  
-
-    NOTES:
-    Within the 'suite' extension, the DataFrame is access via "self._obj"
+    NOTE:
+    Within the 'suite' extension, the DataFrame is accessed via "self._obj"
     """
+
+    #lookup dictionary of max values to allow for each datatype
+    MaxVal = {'Humidity':100.,
+              'Temperature':100.,
+              'TVOC':10000., 
+              'CO2':10000., 
+              'HCHO':10., 
+              'Smoke':5., 
+              'Alcohol':5.,
+              'Methane/Propane/Butane':1., 
+              'LPG':1.0, 
+              'CO':1.0, 
+              'Hydrogen':1.0, 
+              'CO & Methane':1.0,
+              'Ammonia, Sulfide, Benzene':5.
+              }
+
     def __init__(self, pandas_obj, datatypes=None):
         self._obj = pandas_obj
         self.datatypes=datatypes
@@ -141,7 +69,10 @@ class suite(object):
             return self.generic_grid_plot(2, 2, columns, format=format)
 
 
-    def generic_grid_plot(self, rows,cols,types_to_plot, format='%m-%d %H:%M'):
+    def generic_grid_plot(self, rows, cols,
+                          types_to_plot,
+                          format='%m-%d %H:%M',
+                          ):
         """
         Define a rows x cols subplot grid, then perform a plot for
         each datatype in types_to_plot
@@ -179,3 +110,45 @@ class suite(object):
         fig.show()
         return fig,axarr
 
+
+    def cleanup_adc(self):
+        """ 
+        Remove all ADC channels for days on which ADC was busted.
+        On dates 07/10, 07/11, 07/12, and another cluster from
+        07/27 through 07/31.
+        This only impacts the "MQ" sensors.
+        """
+        ADC_channel_names = datacleaner.mq_list
+        if not set(ADC_channel_names).isdisjoint( set(self._obj.columns) ): #see if mq sensors are in data set
+            self._obj.loc['07/10/2019':'07/12/2019', ADC_channel_names] = np.nan
+            self._obj.loc['07/27/2019 16:25':'07/31/2019', ADC_channel_names] = np.nan
+
+    def cleanup_blips(self):
+        """
+        Remove anomolously high data points.
+        Arduino occasionally 'hiccups' for a data point.
+        """
+        for name,val in self.MaxVal.items():
+            if name in self._obj.columns:
+                self._obj.loc[self._obj[name] > val, name] = np.nan
+
+    def cleanup_temperature_low(self):
+        """
+        The temperature sensor or Arduino occasionally returns false results ("blips")
+        that are too low to be physical.  These "blips" would be missed by the 
+        remove_blips() function above.
+
+        TODO: remove blips by searching for anomolous changes in data, rather than by
+        high/low values.
+        """
+        if 'Temperature' in self._obj.columns:
+            self._obj.loc[self._obj['Temperature'] < 40, 'Temperature'] = np.nan
+
+    def cleanup(self):
+        self.cleanup_adc()
+        self.cleanup_blips()
+        self.cleanup_temperature_low()
+            
+    def test_change_data(self):
+        self._obj['Humidity'][0:3] = np.nan
+                              

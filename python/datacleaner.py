@@ -46,8 +46,8 @@ hcho_list.append(datatypes.HCHO())
 suite_list = hcho_list.copy()
 mq_list =  ['Smoke', 'Alcohol', 'Methane/Propane/Butane', 'LPG', 
             'CO', 'Hydrogen', 'CO & Methane', 'Ammonia, Sulfide, Benzene']
-mq_short = ['Smoke', 'Alc', 'Me/Pr/Bu', 'LPG',
-            'CO', 'H', 'CO&Me', 'Amm/Sul, Benz']
+mq_short = ['Smoke', 'Alc', 'Me+Pr+Bu', 'LPG',
+            'CO', 'H', 'CO+Me', 'Amm+Sul+Benz']
 for mq,short in zip(mq_list,mq_short):
     suite_list.append( datatypes.MQ(mq, shortname=short) )
 

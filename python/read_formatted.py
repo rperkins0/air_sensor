@@ -5,7 +5,7 @@ import SuitePanda
 import datacleaner
 
 
-def read_panda(file, type_list=None):
+def read_panda(file, type_list=None, raw=False):
     
     if type_list == None:
         #try to automatically detect data types from file name
@@ -20,9 +20,14 @@ def read_panda(file, type_list=None):
                     parse_dates=True,
                     names=[t.name for t in type_list]
                     )
+    
     p.suite.datatypes = type_list
     p.suite.dtype = dtype or 'custom'
     p.suite.file= file
+
+    if not raw:
+        p.suite.cleanup()
+
     return p
 
 
@@ -43,5 +48,3 @@ def compare_speed():
     print('Running read_formatted.read_panda')
     wrapped = wrapper(read_panda, file)
     print( timeit.timeit(wrapped, number=10) )
-                  
-

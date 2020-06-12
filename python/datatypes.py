@@ -40,7 +40,7 @@ class Datatype(object):
 class Temperature(Datatype):
     def __init__(self):
         super().__init__(name = 'Temperature',
-                         shortname = 'Temp'
+                         shortname = 'Temp',
                          sensor = 'SI7021',
                          breakoutboard='SI7021',
                          vendor='Adafruit',
