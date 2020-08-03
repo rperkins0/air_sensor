@@ -119,9 +119,6 @@ def get_stat(stat):
 def plot_datatype(datatype, mean, std, maxi):
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
-    
-    ax.xaxis.set_major_formatter(DateFormatter('%m-%d'))
-    ax.xaxis.set_tick_params(rotation=45)
 
     mean.plot(y=datatype, ax=ax, rot=45)
     mean_plus_std = mean[datatype]+std[datatype]
@@ -143,6 +140,10 @@ def plot_datatype(datatype, mean, std, maxi):
                     alpha=0.2,
                     color='cyan'
                     )
+
+    ax.xaxis.set_major_formatter(DateFormatter('%m-%d'))
+    ax.xaxis.set_tick_params(rotation=45)
+
     return fig,ax
     
 
@@ -156,8 +157,8 @@ def generate_report_plot():
         log_report.debug(x)
 
     datatypes = [(dt.name, dt.shortname) for dt in datacleaner.suite_list]
-    for dt,sn in datatypes:
-        fig,ax = plot_datatype(dt, mean, std, maxi)
+    for name,sn in datatypes:
+        fig,ax = plot_datatype(name, mean, std, maxi)
         plt.savefig('/home/rory/Arduino/python/png/' +\
                     'trend_' + sn +'.png')
 

@@ -107,7 +107,7 @@ class suite(object):
                             right=0.95,
                             top=0.95,
                             bottom=0.15)
-        fig.show()
+        #fig.show()
         return fig,axarr
 
 
