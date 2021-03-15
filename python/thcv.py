@@ -14,7 +14,7 @@ import busio
 import adafruit_sgp30
 import adafruit_si7021
 from collector import Collector
-
+import matplotlib.pyplot as plt
 
 class THCV(Collector):
     """
@@ -79,3 +79,10 @@ class THCV(Collector):
                 "**** Baseline values: eCO2 = 0x%x, TVOC = 0x%x"
                 % (sgp30.baseline_eCO2, sgp30.baseline_TVOC)
                 )
+
+    def plot_default(self):
+        fig,axs = plt.subplots(2,2, sharex=True)
+        for col, ax in zip(self.columns, axs.flatten()):
+            self.slowbuffer.plot(y=col, ax=ax)
+        fig.tight_layout()
+        return fig,axs

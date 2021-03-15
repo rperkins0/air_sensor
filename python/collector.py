@@ -38,6 +38,7 @@ class Collector():
     def __init__(self):
         self.fastbuffer = pd.DataFrame(columns=self.columns)
         self.slowbuffer = pd.DataFrame(columns=self.columns)
+        self.time_last_save = datetime.datetime.now()
         
     def get_data(self):
         """
@@ -74,35 +75,21 @@ class Collector():
         self.write2file()
         self.slowbuffer = pd.DataFrame(columns=self.columns)
                     
-    def write2file(self):
-        # get today's date as a string
-        today = datetime.date.today()  # creates a 'date' object
-        today_string = today.strftime('%Y-%m-%d')  # creates string
-        # format = YYYY-MM-DD
-
-        fullpath = self.data_folder + '/' + today_string + '.csv'
-
-        flag = 'a' if os.path.exists(fullpath) else 'w'
-        
-        self.slowbuffer.to_csv(fullpath,
-                               sep='\t',
-                               header=False,
-                               mode=flag)
-
-    def write2file2(self, df: pd.DataFrame, date: datetime.date):
+    def write2file(self, df: pd.DataFrame, date: datetime.date):
         date_string = date.strftime('%Y-%m-%d')
         full_path = self.data_folder + '/' + date_string + '.csv'
         flag = 'a' if os.path.exists(full_path) else 'w'
-        df.to_csv(full_path,
-                  sep='\t',
-                  header='False',
-                  mode=flag)
+        df[df.index > self.time_last_save].to_csv(full_path,
+                                                 sep='\t',
+                                                 header=False,
+                                                 mode=flag)
 
     def smartwrite(self):
         dates = self.get_unique_dates( self.slowbuffer )
         for d in dates:
-            self.write2file2( self.slowbuffer[ self.slowbuffer.index.date == d ],
-                              d)
+            matching_dates = self.slowbuffer.index.date == d
+            self.write2file(self.slowbuffer[matching_dates], d)
+        self.time_last_save = datetime.datetime.now()
         
     @staticmethod
     def get_unique_dates(df: pd.DataFrame):
@@ -126,9 +113,10 @@ class Collector():
             date2keep  = dates.max()
 
         for d in dates:
-            if d != date_to_keep:
+            if d != date2keep:
                 to_remove = self.slowbuffer.index[self.slowbuffer.index.date == d]
                 self.slowbuffer.drop(to_remove, inplace=True)
 
-        
+    def plot_default():
+        raise NotImplementedError
     
